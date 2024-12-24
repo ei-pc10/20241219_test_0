@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A-Frame + AR.js Location-Based AR</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js@2.2.1/aframe/build/aframe-ar.min.js"></script>
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <a-scene
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+      arjs="sourceType: webcam; debugUIEnabled: false;">
+
+      <!-- 3D Model with GPS Coordinates -->
+      <a-entity
+        gps-entity-place="latitude: 37.95623964531757; longitude: 139.3371717973987;"
+        gltf-model="https://raw.githubusercontent.com/ei-pc10/hitomania_3d/main/model.glb"
+        scale="1 1 1"
+        position="0 0 0"
+        visible="false"
+        id="target-model">
+      </a-entity>
+
+      <!-- Camera -->
+      <a-camera gps-camera="minDistance: 0;" />
+    </a-scene>
+
+    <script>
+      // Target location
+      const targetLatitude = 37.95623964531757;
+      const targetLongitude = 139.3371717973987;
+      const maxDistance = 2000; // in meters
+
+      // Utility function to calculate distance between two coordinates
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const toRad = (value) => (value * Math.PI) / 180;
+        const R = 6371000; // Earth radius in meters
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) *
+            Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+
+      // Update visibility of the model based on distance
+      document.querySelector("a-camera").addEventListener("gps-camera-update-position", (event) => {
+        const { latitude, longitude } = event.detail.position;
+        const distance = calculateDistance(latitude, longitude, targetLatitude, targetLongitude);
+
+        const model = document.getElementById("target-model");
+        if (distance <= maxDistance) {
+          model.setAttribute("visible", "true");
+        } else {
+          model.setAttribute("visible", "false");
+        }
+      });
+    </script>
+  </body>
+</html>
