@@ -1,28 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>A-Frame + AR.js Location-Based AR</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js@2.2.1/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js/aframe/build/aframe-ar.min.js"></script>
+    <script>
+      // rotation-reader コンポーネントを定義
+      AFRAME.registerComponent('rotation-sync', {
+        tick: function () {
+          // カメラの現在の回転情報を取得
+          const cameraRotation = this.el.sceneEl.camera.el.getAttribute('rotation');
+          // GPSエンティティ（3Dモデル）の方向を更新
+          const model = document.querySelector('[gps-entity-place]');
+          if (model) {
+            model.setAttribute('rotation', `0 ${cameraRotation.y} 0`);
+          }
+        }
+      });
+    </script>
   </head>
   <body style="margin: 0; overflow: hidden;">
-    <a-scene
-      vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true;"
+    <a-scene 
+      vr-mode-ui="enabled: false" 
+      embedded 
       arjs="sourceType: webcam; debugUIEnabled: false;">
+      
+      <!-- カメラの設定 -->
+      <a-camera gps-camera rotation-sync></a-camera>
 
-      <!-- 3D Model with GPS Coordinates -->
-      <a-entity
-        gps-entity-place="latitude: 37.95623964531757; longitude: 139.3371717973987;"
-        gltf-model="https://raw.githubusercontent.com/ei-pc10/hitomania_3d/main/model.glb"
-        scale="10 10 10"
-        position="0 0 500">
+      <!-- 3Dモデルを指定された位置に配置 -->
+      <a-entity 
+        gps-entity-place="latitude: 37.95623964531757; longitude: 139.3371717973987" 
+        gltf-model="https://raw.githubusercontent.com/ei-pc10/hitomania_3d/main/model.glb" 
+        scale="5 5 5" 
+        rotation="0 0 0">
       </a-entity>
-
-      <!-- Camera -->
-      <a-camera gps-camera="minDistance: 0;" />
     </a-scene>
   </body>
 </html>
