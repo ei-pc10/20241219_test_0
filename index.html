@@ -1,103 +1,91 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>AR.js Location-Based 3D Models</title>
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
-    <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js'></script>
-  </head>
-  <body style="margin: 0; overflow: hidden;">
-    <a-scene
-      gps-camera
-      embedded
-      arjs
-      vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true;">
+  <head>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/ar.js/2.0.1/aframe/build/aframe-ar.min.js"></script>
+    <script>
+      async function init() {
+        // Fetch data from data.json
+        const response = await fetch('data.json');
+        const destinations = await response.json();
 
-      <a-camera gps-camera rotation-reader></a-camera>
+        const scene = document.querySelector('a-scene');
+        const userLocation = { latitude: null, longitude: null };
 
-      <script>
-        // Load data.json
-        fetch('data.json')
-          .then(response => response.json())
-          .then(data => {
-            navigator.geolocation.watchPosition((position) => {
-              const userLatitude = position.coords.latitude;
-              const userLongitude = position.coords.longitude;
-
-              data.forEach(location => {
-                const distance = calculateDistance(
-                  userLatitude, userLongitude,
-                  location.latitude, location.longitude
-                );
-
-                updateDistanceDisplay(location.name, distance);
-
-                if (distance <= 2000) {
-                  const scaleIndex = Math.min(Math.floor(distance / 100), scaleArray.length - 1);
-                  const modelScale = scaleArray[scaleIndex];
-                  const modelPosition = positionArray[scaleIndex];
-
-                  createModel(location, modelScale, modelPosition);
-                }
-              });
-            });
-          });
-
-        const scaleArray = [0.3, 0.35, 0.40, 0.70, 1.3, 2.0, 3.5, 5.0, 6.5, 7.5, 8.5, 9.0, 9.5, 10.0, 10.5, 11.1, 30, 60, 70, 100];
-        const positionArray = [5, 10, 12, 17, 20, 23, 30, 35, 40, 75, 90, 150, 170, 200, 240, 270, 320, 350, 400, 500];
-
+        // Function to calculate distance between two coordinates in meters
         function calculateDistance(lat1, lon1, lat2, lon2) {
-          const R = 6371e3; // Earth radius in meters
-          const phi1 = lat1 * (Math.PI / 180);
-          const phi2 = lat2 * (Math.PI / 180);
-          const deltaPhi = (lat2 - lat1) * (Math.PI / 180);
-          const deltaLambda = (lon2 - lon1) * (Math.PI / 180);
+          const R = 6371e3; // Earth's radius in meters
+          const φ1 = (lat1 * Math.PI) / 180;
+          const φ2 = (lat2 * Math.PI) / 180;
+          const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+          const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-          const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-                    Math.cos(phi1) * Math.cos(phi2) *
-                    Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+          const a =
+            Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
           return R * c;
         }
 
-        function updateDistanceDisplay(name, distance) {
-          const distanceElement = document.getElementById('distance-display') || createDistanceDisplay();
-          distanceElement.innerHTML += <p>${name}: ${Math.round(distance)}m</p>;
+        // Function to determine scale and position based on distance
+        function getScaleAndPosition(distance) {
+          const scaleArray = [0.3, 0.35, 0.4, 0.7, 1.3, 2.0, 3.5, 5.0, 6.5, 7.5, 8.5, 9.0, 9.5, 10.0, 10.5, 11.1, 30, 60, 70, 100];
+          const positionArray = [5, 10, 12, 17, 20, 23, 30, 35, 40, 75, 90, 150, 170, 200, 240, 270, 320, 350, 400, 500];
+          const index = Math.min(Math.floor(distance / 100), scaleArray.length - 1);
+          return { scale: scaleArray[index], position: positionArray[index] };
         }
 
-        function createDistanceDisplay() {
-          const div = document.createElement('div');
-          div.id = 'distance-display';
-          div.style.position = 'absolute';
-          div.style.top = '10px';
-          div.style.right = '10px';
-          div.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-          div.style.padding = '10px';
-          div.style.borderRadius = '5px';
-          div.style.zIndex = '100';
-          document.body.appendChild(div);
-          return div;
-        }
+        // Watch user's location
+        navigator.geolocation.watchPosition(
+          (position) => {
+            userLocation.latitude = position.coords.latitude;
+            userLocation.longitude = position.coords.longitude;
 
-        function createModel(location, scale, position) {
-          const scene = document.querySelector('a-scene');
+            // Clear the scene
+            scene.innerHTML = '';
 
-          const entity = document.createElement('a-entity');
-          entity.setAttribute('gps-entity-place', latitude: ${location.latitude}; longitude: ${location.longitude});
-          entity.setAttribute('gltf-model', location.modelUrl);
-          entity.setAttribute('scale', ${scale} ${scale} ${scale});
-          entity.setAttribute('position', 0 0 -${position});
-          entity.setAttribute('look-at', '[gps-camera]');
+            // Display distance and 3D models
+            destinations.forEach((destination) => {
+              const distance = calculateDistance(
+                userLocation.latitude,
+                userLocation.longitude,
+                destination.latitude,
+                destination.longitude
+              );
 
-          scene.appendChild(entity);
-        }
-      </script>
+              // Display distance in the top-right corner
+              const distanceText = document.getElementById('distanceText');
+              distanceText.textContent += `${destination.name}: ${Math.round(distance)} m\n`;
+
+              // If within 2000 meters, display the 3D model
+              if (distance <= 2000) {
+                const { scale, position } = getScaleAndPosition(distance);
+                const entity = document.createElement('a-entity');
+
+                entity.setAttribute('gps-entity-place', `latitude: ${destination.latitude}; longitude: ${destination.longitude}`);
+                entity.setAttribute('gltf-model', destination.modelUrl);
+                entity.setAttribute('scale', `${scale} ${scale} ${scale}`);
+                entity.setAttribute('position', `0 0 -${position}`);
+                entity.setAttribute('look-at', '[gps-camera]');
+
+                scene.appendChild(entity);
+              }
+            });
+          },
+          (error) => {
+            console.error('Error getting location', error);
+          },
+          { enableHighAccuracy: true }
+        );
+      }
+    </script>
+  </head>
+  <body onload="init()">
+    <a-scene gps-camera="minDistance: 0">
+      <a-camera gps-camera></a-camera>
     </a-scene>
+    <pre id="distanceText" style="position: absolute; top: 0; right: 0; background: rgba(255, 255, 255, 0.7); padding: 10px;">Distances:\n</pre>
   </body>
 </html>
